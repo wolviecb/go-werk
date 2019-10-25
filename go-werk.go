@@ -10,34 +10,33 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wolviecb/go-wrk/loader"
-	"github.com/wolviecb/go-wrk/util"
+	"github.com/wolviecb/go-werk/loader"
+	"github.com/wolviecb/go-werk/util"
 )
 
-const APP_VERSION = "0.1"
+const appVersion = "0.1"
 
-//default that can be overridden from the command line
-var versionFlag bool = false
-var helpFlag bool = false
-var duration int = 10 //seconds
-var goroutines int = 2
-var testUrl string
-var method string = "GET"
-var host string
-var headerStr string
-var header map[string]string
-var statsAggregator chan *loader.RequesterStats
-var timeoutms int
-var allowRedirectsFlag bool = false
+// default that can be overridden from the command line
+var versionFlag bool
+var allowRedirectsFlag bool
+var helpFlag bool
 var disableCompression bool
 var disableKeepAlive bool
-var playbackFile string
+var goroutines int
+var duration int
+var timeoutms int
+var method string
+var host string
+var headerStr string
 var reqBody string
 var clientCert string
 var clientKey string
 var caCert string
 var http2 bool
 var insecureTLS bool
+var testURL string
+var header map[string]string
+var statsAggregator chan *loader.RequesterStats
 
 func init() {
 	flag.BoolVar(&versionFlag, "v", false, "Print version details")
@@ -51,7 +50,6 @@ func init() {
 	flag.StringVar(&method, "M", "GET", "HTTP method")
 	flag.StringVar(&host, "host", "", "Host Header")
 	flag.StringVar(&headerStr, "H", "", "header line, joined with ';'")
-	flag.StringVar(&playbackFile, "f", "<empty>", "Playback file name")
 	flag.StringVar(&reqBody, "body", "", "request body string or @filename")
 	flag.StringVar(&clientCert, "cert", "", "CA certificate file to verify peer against (SSL/TLS)")
 	flag.StringVar(&clientKey, "key", "", "Private key file name (SSL/TLS")
@@ -60,9 +58,9 @@ func init() {
 	flag.BoolVar(&insecureTLS, "insecure", true, "verify TLS certificates")
 }
 
-//printDefaults a nicer format for the defaults
+// printDefaults a nicer format for the defaults
 func printDefaults() {
-	fmt.Println("Usage: go-wrk <options> <url>")
+	fmt.Println("Usage: go-werk <options> <url>")
 	fmt.Println("Options:")
 	flag.VisitAll(func(flag *flag.Flag) {
 		fmt.Println("\t-"+flag.Name, "\t", flag.Usage, "(Default "+flag.DefValue+")")
@@ -70,7 +68,7 @@ func printDefaults() {
 }
 
 func main() {
-	//raising the limits. Some performance gains were achieved with the + goroutines (not a lot).
+	// raising the limits. Some performance gains were achieved with the + goroutines (not a lot).
 	runtime.GOMAXPROCS(runtime.NumCPU() + goroutines)
 
 	statsAggregator = make(chan *loader.RequesterStats, goroutines)
@@ -88,32 +86,21 @@ func main() {
 		}
 	}
 
-	if playbackFile != "<empty>" {
-		file, err := os.Open(playbackFile) // For read access.
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		defer file.Close()
-		url, err := ioutil.ReadAll(file)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		testUrl = string(url)
+	if na := flag.Args(); len(na) < 1 {
+		printDefaults()
 	} else {
-		testUrl = flag.Arg(0)
+		testURL = flag.Args()[0]
 	}
 
 	if versionFlag {
-		fmt.Println("Version:", APP_VERSION)
+		fmt.Println("Version:", appVersion)
 		return
-	} else if helpFlag || len(testUrl) == 0 {
+	} else if helpFlag || len(testURL) == 0 {
 		printDefaults()
 		return
 	}
 
-	fmt.Printf("Running %vs test @ %v\n  %v goroutine(s) running concurrently\n", duration, testUrl, goroutines)
+	fmt.Printf("Running %vs test @ %v\n  %v goroutine(s) running concurrently\n", duration, testURL, goroutines)
 
 	if len(reqBody) > 0 && reqBody[0] == '@' {
 		bodyFilename := reqBody[1:]
@@ -125,7 +112,7 @@ func main() {
 		reqBody = string(data)
 	}
 
-	loadGen := loader.NewLoadCfg(duration, goroutines, testUrl, reqBody, method, host, header, statsAggregator, timeoutms,
+	loadGen := loader.NewLoadCfg(duration, goroutines, testURL, reqBody, method, host, header, statsAggregator, timeoutms,
 		allowRedirectsFlag, disableCompression, disableKeepAlive, clientCert, clientKey, caCert, http2, insecureTLS)
 
 	for i := 0; i < goroutines; i++ {
@@ -161,8 +148,8 @@ func main() {
 	reqRate := float64(aggStats.NumRequests) / avgThreadDur.Seconds()
 	avgReqTime := aggStats.TotDuration / time.Duration(aggStats.NumRequests)
 	bytesRate := float64(aggStats.TotRespSize) / avgThreadDur.Seconds()
-	fmt.Printf("%v requests in %v, %v read\n", aggStats.NumRequests, avgThreadDur, util.ByteSize{float64(aggStats.TotRespSize)})
-	fmt.Printf("Requests/sec:\t\t%.2f\nTransfer/sec:\t\t%v\nAvg Req Time:\t\t%v\n", reqRate, util.ByteSize{bytesRate}, avgReqTime)
+	fmt.Printf("%v requests in %v, %v read\n", aggStats.NumRequests, avgThreadDur, util.ByteSize{Size: float64(aggStats.TotRespSize)})
+	fmt.Printf("Requests/sec:\t\t%.2f\nTransfer/sec:\t\t%v\nAvg Req Time:\t\t%v\n", reqRate, util.ByteSize{Size: bytesRate}, avgReqTime)
 	fmt.Printf("Fastest Request:\t%v\n", aggStats.MinRequestTime)
 	fmt.Printf("Slowest Request:\t%v\n", aggStats.MaxRequestTime)
 	fmt.Printf("Number of Errors:\t%v\n", aggStats.NumErrs)

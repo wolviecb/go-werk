@@ -11,10 +11,12 @@ type RedirectError struct {
 	msg string
 }
 
-func (self *RedirectError) Error() string {
-	return self.msg
+// Error message
+func (s *RedirectError) Error() string {
+	return s.msg
 }
 
+// NewRedirectError return a redirect error message
 func NewRedirectError(message string) *RedirectError {
 	rt := RedirectError{msg: message}
 	return &rt
@@ -25,7 +27,7 @@ type ByteSize struct {
 	Size float64
 }
 
-func (self ByteSize) String() string {
+func (s ByteSize) String() string {
 	var rt float64
 	var suffix string
 	const (
@@ -35,17 +37,17 @@ func (self ByteSize) String() string {
 		GByte = MByte * 1024
 	)
 
-	if self.Size > GByte {
-		rt = self.Size / GByte
+	if s.Size > GByte {
+		rt = s.Size / GByte
 		suffix = "GB"
-	} else if self.Size > MByte {
-		rt = self.Size / MByte
+	} else if s.Size > MByte {
+		rt = s.Size / MByte
 		suffix = "MB"
-	} else if self.Size > KByte {
-		rt = self.Size / KByte
+	} else if s.Size > KByte {
+		rt = s.Size / KByte
 		suffix = "KB"
 	} else {
-		rt = self.Size
+		rt = s.Size
 		suffix = "bytes"
 	}
 
@@ -54,24 +56,24 @@ func (self ByteSize) String() string {
 	return srt
 }
 
+// MaxDuration compares d1 and d2 and return the higest value
 func MaxDuration(d1 time.Duration, d2 time.Duration) time.Duration {
 	if d1 > d2 {
 		return d1
-	} else {
-		return d2
 	}
+	return d2
 }
 
+// MinDuration compares d1 and d2 and return the lowest value
 func MinDuration(d1 time.Duration, d2 time.Duration) time.Duration {
 	if d1 < d2 {
 		return d1
-	} else {
-		return d2
 	}
+	return d2
 }
 
-//EstimateHttpHeadersSize had to create this because headers size was not counted
-func EstimateHttpHeadersSize(headers http.Header) (result int64) {
+// EstimateHTTPHeadersSize had to create this because headers size was not counted
+func EstimateHTTPHeadersSize(headers http.Header) (result int64) {
 	result = 0
 
 	for k, v := range headers {

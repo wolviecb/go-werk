@@ -12,17 +12,18 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/wolviecb/go-wrk/util"
+	"github.com/wolviecb/go-werk/util"
 )
 
 const (
-	USER_AGENT = "go-wrk"
+	userAgent = "go-werk"
 )
 
+// LoadCfg holds configuration data
 type LoadCfg struct {
 	duration           int //seconds
 	goroutines         int
-	testUrl            string
+	testURL            string
 	reqBody            string
 	method             string
 	host               string
@@ -50,9 +51,10 @@ type RequesterStats struct {
 	NumErrs        int
 }
 
+// NewLoadCfg loads configuration into LoadCfg
 func NewLoadCfg(duration int, //seconds
 	goroutines int,
-	testUrl string,
+	testURL string,
 	reqBody string,
 	method string,
 	host string,
@@ -67,12 +69,12 @@ func NewLoadCfg(duration int, //seconds
 	caCert string,
 	http2 bool,
 	insecureTLS bool) (rt *LoadCfg) {
-	rt = &LoadCfg{duration, goroutines, testUrl, reqBody, method, host, header, statsAggregator, timeoutms,
+	rt = &LoadCfg{duration, goroutines, testURL, reqBody, method, host, header, statsAggregator, timeoutms,
 		allowRedirects, disableCompression, disableKeepAlive, 0, clientCert, clientKey, caCert, http2, insecureTLS}
 	return
 }
 
-func escapeUrlStr(in string) string {
+func escapeURLStr(in string) string {
 	qm := strings.Index(in, "?")
 	if qm != -1 {
 		qry := in[qm+1:]
@@ -96,44 +98,44 @@ func escapeUrlStr(in string) string {
 
 		}
 		return in[:qm] + "?" + query
-	} else {
-		return in
 	}
+	return in
+
 }
 
-//DoRequest single request implementation. Returns the size of the response and its duration
-//On error - returns -1 on both
-func DoRequest(httpClient *http.Client, header map[string]string, method, host, loadUrl, reqBody string) (respSize int, duration time.Duration) {
+// DoRequest single request implementation. Returns the size of the response and its duration
+// On error - returns -1 on both
+func (cfg *LoadCfg) DoRequest(httpClient *http.Client) (respSize int, duration time.Duration) {
 	respSize = -1
 	duration = -1
 
-	loadUrl = escapeUrlStr(loadUrl)
+	loadURL := escapeURLStr(cfg.testURL)
 
 	var buf io.Reader
-	if len(reqBody) > 0 {
-		buf = bytes.NewBufferString(reqBody)
+	if len(cfg.reqBody) > 0 {
+		buf = bytes.NewBufferString(cfg.reqBody)
 	}
 
-	req, err := http.NewRequest(method, loadUrl, buf)
+	req, err := http.NewRequest(cfg.method, loadURL, buf)
 	if err != nil {
 		fmt.Println("An error occured doing request", err)
 		return
 	}
 
-	for hk, hv := range header {
+	for hk, hv := range cfg.header {
 		req.Header.Add(hk, hv)
 	}
 
-	req.Header.Add("User-Agent", USER_AGENT)
-	if host != "" {
-		req.Host = host
+	req.Header.Add("User-Agent", userAgent)
+	if cfg.host != "" {
+		req.Host = cfg.host
 	}
 	start := time.Now()
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Println("redirect?")
-		//this is a bit weird. When redirection is prevented, a url.Error is retuned. This creates an issue to distinguish
-		//between an invalid URL that was provided and and redirection error.
+		// this is a bit weird. When redirection is prevented, a url.Error is retuned. This creates an issue to distinguish
+		// between an invalid URL that was provided and and redirection error.
 		rr, ok := err.(*url.Error)
 		if !ok {
 			fmt.Println("An error occured doing request", err, rr)
@@ -156,10 +158,10 @@ func DoRequest(httpClient *http.Client, header map[string]string, method, host, 
 	}
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
 		duration = time.Since(start)
-		respSize = len(body) + int(util.EstimateHttpHeadersSize(resp.Header))
+		respSize = len(body) + int(util.EstimateHTTPHeadersSize(resp.Header))
 	} else if resp.StatusCode == http.StatusMovedPermanently || resp.StatusCode == http.StatusTemporaryRedirect {
 		duration = time.Since(start)
-		respSize = int(resp.ContentLength) + int(util.EstimateHttpHeadersSize(resp.Header))
+		respSize = int(resp.ContentLength) + int(util.EstimateHTTPHeadersSize(resp.Header))
 	} else {
 		fmt.Println("received status code", resp.StatusCode, "from", resp.Header, "content", string(body), req)
 	}
@@ -167,8 +169,8 @@ func DoRequest(httpClient *http.Client, header map[string]string, method, host, 
 	return
 }
 
-//Requester a go function for repeatedly making requests and aggregating statistics as long as required
-//When it is done, it sends the results using the statsAggregator channel
+// RunSingleLoadSession Requester a go function for repeatedly making requests and aggregating statistics as long as required
+// When it is done, it sends the results using the statsAggregator channel
 func (cfg *LoadCfg) RunSingleLoadSession() {
 	stats := &RequesterStats{MinRequestTime: time.Minute}
 	start := time.Now()
@@ -179,7 +181,7 @@ func (cfg *LoadCfg) RunSingleLoadSession() {
 	}
 
 	for time.Since(start).Seconds() <= float64(cfg.duration) && atomic.LoadInt32(&cfg.interrupted) == 0 {
-		respSize, reqDur := DoRequest(httpClient, cfg.header, cfg.method, cfg.host, cfg.testUrl, cfg.reqBody)
+		respSize, reqDur := cfg.DoRequest(httpClient)
 		if respSize > 0 {
 			stats.TotRespSize += int64(respSize)
 			stats.TotDuration += reqDur
@@ -193,6 +195,7 @@ func (cfg *LoadCfg) RunSingleLoadSession() {
 	cfg.statsAggregator <- stats
 }
 
+// Stop kill all gorountines
 func (cfg *LoadCfg) Stop() {
 	atomic.StoreInt32(&cfg.interrupted, 1)
 }
