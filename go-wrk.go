@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tsliwowicz/go-wrk/loader"
-	"github.com/tsliwowicz/go-wrk/util"
+	"github.com/wolviecb/go-wrk/loader"
+	"github.com/wolviecb/go-wrk/util"
 )
 
 const APP_VERSION = "0.1"
@@ -37,6 +37,7 @@ var clientCert string
 var clientKey string
 var caCert string
 var http2 bool
+var insecureTLS bool
 
 func init() {
 	flag.BoolVar(&versionFlag, "v", false, "Print version details")
@@ -56,6 +57,7 @@ func init() {
 	flag.StringVar(&clientKey, "key", "", "Private key file name (SSL/TLS")
 	flag.StringVar(&caCert, "ca", "", "CA file to verify peer against (SSL/TLS)")
 	flag.BoolVar(&http2, "http", true, "Use HTTP/2")
+	flag.BoolVar(&insecureTLS, "insecure", true, "verify TLS certificates")
 }
 
 //printDefaults a nicer format for the defaults
@@ -124,7 +126,7 @@ func main() {
 	}
 
 	loadGen := loader.NewLoadCfg(duration, goroutines, testUrl, reqBody, method, host, header, statsAggregator, timeoutms,
-		allowRedirectsFlag, disableCompression, disableKeepAlive, clientCert, clientKey, caCert, http2)
+		allowRedirectsFlag, disableCompression, disableKeepAlive, clientCert, clientKey, caCert, http2, insecureTLS)
 
 	for i := 0; i < goroutines; i++ {
 		go loadGen.RunSingleLoadSession()
@@ -150,7 +152,7 @@ func main() {
 	}
 
 	if aggStats.NumRequests == 0 {
-		fmt.Println("Error: No statistics collected / no requests found\n")
+		fmt.Println("Error: No statistics collected / no requests found")
 		return
 	}
 
