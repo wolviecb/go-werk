@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tsliwowicz/go-wrk/util"
+	"github.com/wolviecb/go-wrk/util"
 )
 
 const (
@@ -37,6 +37,7 @@ type LoadCfg struct {
 	clientKey          string
 	caCert             string
 	http2              bool
+	insecureTLS        bool
 }
 
 // RequesterStats used for colelcting aggregate statistics
@@ -64,9 +65,10 @@ func NewLoadCfg(duration int, //seconds
 	clientCert string,
 	clientKey string,
 	caCert string,
-	http2 bool) (rt *LoadCfg) {
+	http2 bool,
+	insecureTLS bool) (rt *LoadCfg) {
 	rt = &LoadCfg{duration, goroutines, testUrl, reqBody, method, host, header, statsAggregator, timeoutms,
-		allowRedirects, disableCompression, disableKeepAlive, 0, clientCert, clientKey, caCert, http2}
+		allowRedirects, disableCompression, disableKeepAlive, 0, clientCert, clientKey, caCert, http2, insecureTLS}
 	return
 }
 
@@ -171,7 +173,7 @@ func (cfg *LoadCfg) RunSingleLoadSession() {
 	stats := &RequesterStats{MinRequestTime: time.Minute}
 	start := time.Now()
 
-	httpClient, err := client(cfg.disableCompression, cfg.disableKeepAlive, cfg.timeoutms, cfg.allowRedirects, cfg.clientCert, cfg.clientKey, cfg.caCert, cfg.http2)
+	httpClient, err := client(cfg.disableCompression, cfg.disableKeepAlive, cfg.timeoutms, cfg.allowRedirects, cfg.clientCert, cfg.clientKey, cfg.caCert, cfg.http2, cfg.insecureTLS)
 	if err != nil {
 		log.Fatal(err)
 	}
