@@ -1,10 +1,13 @@
 go-werk - an HTTP benchmarking tool
 ==================================
 
-FORK
-----
+FORK PAUSE
+----------
 
 NOTE: I've just forked this from [tsliwowicz/go-wrk](https://github.com/tsliwowicz/go-wrk) to add the `-insecure` flag and ended up doing a bunch linting/styling, which I found just too much for a PR on his repo, drop him a star if this is useful for you
+
+Resuming
+--------
 
 go-werk is a modern HTTP benchmarking tool capable of generating significant load when run on a single multi-core CPU. It builds on go language go routines and scheduler for behind the scenes async IO and concurrency.
 
