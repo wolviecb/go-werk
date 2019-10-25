@@ -65,6 +65,7 @@ func printDefaults() {
 	flag.VisitAll(func(flag *flag.Flag) {
 		fmt.Println("\t-"+flag.Name, "\t", flag.Usage, "(Default "+flag.DefValue+")")
 	})
+	os.Exit(0)
 }
 
 func main() {
@@ -97,7 +98,6 @@ func main() {
 		return
 	} else if helpFlag || len(testURL) == 0 {
 		printDefaults()
-		return
 	}
 
 	fmt.Printf("Running %vs test @ %v\n  %v goroutine(s) running concurrently\n", duration, testURL, goroutines)
