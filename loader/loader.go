@@ -79,8 +79,8 @@ func escapeURLStr(in string) string {
 	if qm != -1 {
 		qry := in[qm+1:]
 		qrys := strings.Split(qry, "&")
-		var query string = ""
-		var qEscaped string = ""
+		var query string
+		var qEscaped string
 		var first bool = true
 		for _, q := range qrys {
 			qSplit := strings.Split(q, "=")
@@ -118,7 +118,7 @@ func (cfg *LoadCfg) DoRequest(httpClient *http.Client) (respSize int, duration t
 
 	req, err := http.NewRequest(cfg.method, loadURL, buf)
 	if err != nil {
-		fmt.Println("An error occured doing request", err)
+		fmt.Println("An error occurred doing request", err)
 		return
 	}
 
@@ -138,10 +138,10 @@ func (cfg *LoadCfg) DoRequest(httpClient *http.Client) (respSize int, duration t
 		// between an invalid URL that was provided and and redirection error.
 		rr, ok := err.(*url.Error)
 		if !ok {
-			fmt.Println("An error occured doing request", err, rr)
+			fmt.Println("An error occurred doing request", err, rr)
 			return
 		}
-		fmt.Println("An error occured doing request", err)
+		fmt.Println("An error occurred doing request", err)
 	}
 	if resp == nil {
 		fmt.Println("empty response")
@@ -154,7 +154,7 @@ func (cfg *LoadCfg) DoRequest(httpClient *http.Client) (respSize int, duration t
 	}()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("An error occured reading body", err)
+		fmt.Println("An error occurred reading body", err)
 	}
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
 		duration = time.Since(start)

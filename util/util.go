@@ -56,7 +56,7 @@ func (s ByteSize) String() string {
 	return srt
 }
 
-// MaxDuration compares d1 and d2 and return the higest value
+// MaxDuration compares d1 and d2 and return the highest value
 func MaxDuration(d1 time.Duration, d2 time.Duration) time.Duration {
 	if d1 > d2 {
 		return d1
