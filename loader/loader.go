@@ -21,27 +21,27 @@ const (
 
 // LoadCfg holds configuration data
 type LoadCfg struct {
-	duration           int //seconds
-	goroutines         int
-	testURL            string
-	reqBody            string
-	method             string
-	host               string
-	header             map[string]string
-	statsAggregator    chan *RequesterStats
-	timeoutms          int
-	allowRedirects     bool
-	disableCompression bool
-	disableKeepAlive   bool
-	interrupted        int32
-	clientCert         string
-	clientKey          string
-	caCert             string
-	http2              bool
-	insecureTLS        bool
+	Duration           int //seconds
+	Goroutines         int
+	TestURL            string
+	ReqBody            string
+	Method             string
+	Host               string
+	Header             map[string]string
+	StatsAggregator    chan *RequesterStats
+	Timeoutms          int
+	AllowRedirects     bool
+	DisableCompression bool
+	DisableKeepAlive   bool
+	Interrupted        int32
+	ClientCert         string
+	ClientKey          string
+	CaCert             string
+	HTTP2              bool
+	InsecureTLS        bool
 }
 
-// RequesterStats used for colelcting aggregate statistics
+// RequesterStats used for collecting aggregate statistics
 type RequesterStats struct {
 	TotRespSize    int64
 	TotDuration    time.Duration
@@ -54,9 +54,9 @@ type RequesterStats struct {
 // NewLoadCfg loads configuration into LoadCfg
 func NewLoadCfg(duration int, //seconds
 	goroutines int,
-	testURL string,
-	reqBody string,
-	method string,
+	TestURL string,
+	ReqBody string,
+	Method string,
 	host string,
 	header map[string]string,
 	statsAggregator chan *RequesterStats,
@@ -69,7 +69,7 @@ func NewLoadCfg(duration int, //seconds
 	caCert string,
 	http2 bool,
 	insecureTLS bool) (rt *LoadCfg) {
-	rt = &LoadCfg{duration, goroutines, testURL, reqBody, method, host, header, statsAggregator, timeoutms,
+	rt = &LoadCfg{duration, goroutines, TestURL, ReqBody, Method, host, header, statsAggregator, timeoutms,
 		allowRedirects, disableCompression, disableKeepAlive, 0, clientCert, clientKey, caCert, http2, insecureTLS}
 	return
 }
@@ -109,32 +109,32 @@ func (cfg *LoadCfg) DoRequest(httpClient *http.Client) (respSize int, duration t
 	respSize = -1
 	duration = -1
 
-	loadURL := escapeURLStr(cfg.testURL)
+	loadURL := escapeURLStr(cfg.TestURL)
 
 	var buf io.Reader
-	if len(cfg.reqBody) > 0 {
-		buf = bytes.NewBufferString(cfg.reqBody)
+	if len(cfg.ReqBody) > 0 {
+		buf = bytes.NewBufferString(cfg.ReqBody)
 	}
 
-	req, err := http.NewRequest(cfg.method, loadURL, buf)
+	req, err := http.NewRequest(cfg.Method, loadURL, buf)
 	if err != nil {
 		fmt.Println("An error occurred doing request", err)
 		return
 	}
 
-	for hk, hv := range cfg.header {
+	for hk, hv := range cfg.Header {
 		req.Header.Add(hk, hv)
 	}
 
 	req.Header.Add("User-Agent", userAgent)
-	if cfg.host != "" {
-		req.Host = cfg.host
+	if cfg.Host != "" {
+		req.Host = cfg.Host
 	}
 	start := time.Now()
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Println("redirect?")
-		// this is a bit weird. When redirection is prevented, a url.Error is retuned. This creates an issue to distinguish
+		// this is a bit weird. When redirection is prevented, a url.Error is returned. This creates an issue to distinguish
 		// between an invalid URL that was provided and and redirection error.
 		rr, ok := err.(*url.Error)
 		if !ok {
@@ -175,12 +175,12 @@ func (cfg *LoadCfg) RunSingleLoadSession() {
 	stats := &RequesterStats{MinRequestTime: time.Minute}
 	start := time.Now()
 
-	httpClient, err := client(cfg.disableCompression, cfg.disableKeepAlive, cfg.timeoutms, cfg.allowRedirects, cfg.clientCert, cfg.clientKey, cfg.caCert, cfg.http2, cfg.insecureTLS)
+	httpClient, err := client(cfg.DisableCompression, cfg.DisableKeepAlive, cfg.Timeoutms, cfg.AllowRedirects, cfg.ClientCert, cfg.ClientKey, cfg.CaCert, cfg.HTTP2, cfg.InsecureTLS)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for time.Since(start).Seconds() <= float64(cfg.duration) && atomic.LoadInt32(&cfg.interrupted) == 0 {
+	for time.Since(start).Seconds() <= float64(cfg.Duration) && atomic.LoadInt32(&cfg.Interrupted) == 0 {
 		respSize, reqDur := cfg.DoRequest(httpClient)
 		if respSize > 0 {
 			stats.TotRespSize += int64(respSize)
@@ -192,10 +192,10 @@ func (cfg *LoadCfg) RunSingleLoadSession() {
 			stats.NumErrs++
 		}
 	}
-	cfg.statsAggregator <- stats
+	cfg.StatsAggregator <- stats
 }
 
-// Stop kill all gorountines
+// Stop kill all goroutines
 func (cfg *LoadCfg) Stop() {
-	atomic.StoreInt32(&cfg.interrupted, 1)
+	atomic.StoreInt32(&cfg.Interrupted, 1)
 }
