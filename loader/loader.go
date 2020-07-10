@@ -191,7 +191,7 @@ func (cfg *LoadCfg) RunSingleLoadSession() {
 	stats := &RequesterStats{MinRequestTime: time.Minute}
 	start := time.Now()
 
-	httpClient, err := client(cfg.DisableCompression, cfg.DisableKeepAlive, cfg.Timeoutms, cfg.AllowRedirects, cfg.ClientCert, cfg.ClientKey, cfg.CaCert, cfg.HTTP2, cfg.InsecureTLS)
+	httpClient, err := client(*cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
