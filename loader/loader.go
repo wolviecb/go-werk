@@ -21,24 +21,23 @@ const (
 
 // LoadCfg holds configuration data
 type LoadCfg struct {
-	Duration           int //seconds
-	Goroutines         int
-	TestURL            string
-	ReqBody            string
-	Method             string
-	Host               string
-	Header             map[string]string
-	StatsAggregator    chan *RequesterStats
-	Timeoutms          int
-	AllowRedirects     bool
-	DisableCompression bool
-	DisableKeepAlive   bool
-	Interrupted        int32
-	ClientCert         string
-	ClientKey          string
-	CaCert             string
-	HTTP2              bool
-	InsecureTLS        bool
+	Duration           int                  // Duration of the test in seconds
+	Goroutines         int                  // Number of parallel routines to run
+	TestURL            string               // URL to test
+	ReqBody            string               // HTTP Request body of the test
+	Method             string               // HTTP Method of the test
+	Host               string               // Overrides TestURL host
+	Header             map[string]string    // HTTP Headers for the test
+	StatsAggregator    chan *RequesterStats // Test Results aggregator
+	Timeoutms          int                  // HTTP timeout in milliseconds
+	AllowRedirects     bool                 // Allow HTTP redirects
+	DisableCompression bool                 // Disable HTTP compressions
+	DisableKeepAlive   bool                 // Disable HTTP keep-alive
+	ClientCert         string               // Client certificate for authentication
+	ClientKey          string               // Client key for authentication
+	CaCert             string               // CA Certificate
+	HTTP2              bool                 // Use HTTP2
+	InsecureTLS        bool                 // Toggles remote certificate validation
 }
 
 // RequesterStats used for collecting aggregate statistics
