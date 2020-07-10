@@ -17,9 +17,8 @@ func (s *RedirectError) Error() string {
 }
 
 // NewRedirectError return a redirect error message
-func NewRedirectError(message string) *RedirectError {
-	rt := RedirectError{msg: message}
-	return &rt
+func NewRedirectError(m string) *RedirectError {
+	return &RedirectError{msg: m}
 }
 
 // ByteSize a helper struct that implements the String() method and returns a human readable result. Very useful for %v formatting.
@@ -51,9 +50,7 @@ func (s ByteSize) String() string {
 		suffix = "bytes"
 	}
 
-	srt := fmt.Sprintf("%.2f%v", rt, suffix)
-
-	return srt
+	return fmt.Sprintf("%.2f%v", rt, suffix)
 }
 
 // MaxDuration compares d1 and d2 and return the highest value
@@ -73,8 +70,8 @@ func MinDuration(d1 time.Duration, d2 time.Duration) time.Duration {
 }
 
 // EstimateHTTPHeadersSize had to create this because headers size was not counted
-func EstimateHTTPHeadersSize(headers http.Header) (result int64) {
-	result = 0
+func EstimateHTTPHeadersSize(headers http.Header) int64 {
+	var result int64 = 0
 
 	for k, v := range headers {
 		result += int64(len(k) + len(": \r\n"))
@@ -83,7 +80,5 @@ func EstimateHTTPHeadersSize(headers http.Header) (result int64) {
 		}
 	}
 
-	result += int64(len("\r\n"))
-
-	return result
+	return result + int64(len("\r\n"))
 }
