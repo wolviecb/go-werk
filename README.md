@@ -1,6 +1,8 @@
 go-werk - an HTTP benchmarking tool
 ==================================
 
+![Go](https://github.com/wolviecb/go-werk/workflows/Go/badge.svg?branch=master)
+
 FORK PAUSE
 ----------
 
