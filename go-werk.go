@@ -66,7 +66,7 @@ func main() {
 		}
 	}
 
-	if na := flag.Args(); len(na) < 1 {
+	if len(flag.Args()) < 1 {
 		printDefaults()
 	} else {
 		f.TestURL = flag.Args()[0]
