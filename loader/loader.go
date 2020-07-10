@@ -18,6 +18,28 @@ const (
 	userAgent = "go-werk"
 )
 
+// ABool is a atomic boolean
+type ABool struct {
+	flag int32
+}
+
+// Set atomically write a bool
+func (b *ABool) Set(v bool) {
+	var i int32 = 0
+	if v {
+		i = 1
+	}
+	atomic.StoreInt32(&(b.flag), int32(i))
+}
+
+// Get atomically reads a bool
+func (b *ABool) Get() bool {
+	if atomic.LoadInt32(&(b.flag)) != 0 {
+		return true
+	}
+	return false
+}
+
 // LoadCfg holds configuration data
 type LoadCfg struct {
 	Duration           int                  // Duration of the test in seconds
@@ -32,6 +54,7 @@ type LoadCfg struct {
 	AllowRedirects     bool                 // Allow HTTP redirects
 	DisableCompression bool                 // Disable HTTP compressions
 	DisableKeepAlive   bool                 // Disable HTTP keep-alive
+	StopAll            ABool                // Stops all routines
 	ClientCert         string               // Client certificate for authentication
 	ClientKey          string               // Client key for authentication
 	CaCert             string               // CA Certificate
@@ -173,6 +196,7 @@ func (cfg *LoadCfg) RunSingleLoadSession() {
 		log.Fatal(err)
 	}
 
+	for time.Since(start).Seconds() <= float64(cfg.Duration) && !cfg.StopAll.Get() {
 		respStats, err := cfg.DoRequest(httpClient)
 		if err != nil {
 			stats.NumErrs++
@@ -186,9 +210,4 @@ func (cfg *LoadCfg) RunSingleLoadSession() {
 
 	}
 	cfg.StatsAggregator <- stats
-}
-
-// Stop kill all goroutines
-func (cfg *LoadCfg) Stop() {
-	atomic.StoreInt32(&cfg.Interrupted, 1)
 }

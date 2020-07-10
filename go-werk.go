@@ -101,7 +101,7 @@ func main() {
 	for responders < f.Goroutines {
 		select {
 		case <-sigChan:
-			f.Stop()
+			f.StopAll.Set(true)
 			fmt.Printf("stopping...\n")
 		case stats := <-f.StatsAggregator:
 			aggStats.NumErrs += stats.NumErrs
