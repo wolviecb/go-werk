@@ -3,11 +3,9 @@ package loader
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io/ioutil"
 	"net/http"
-
-	"fmt"
-
 	"time"
 
 	"github.com/wolviecb/go-werk/util"
