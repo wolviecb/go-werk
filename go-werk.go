@@ -16,15 +16,21 @@ import (
 
 const appVersion = "0.1"
 
-var (
-	f loader.LoadCfg
+// printDefaults a nicer format for the defaults
+func printDefaults() {
+	fmt.Println("Usage: go-werk <options> <url>")
+	fmt.Println("Options:")
+	flag.VisitAll(func(flag *flag.Flag) {
+		fmt.Println("\t-"+flag.Name, "\t", flag.Usage, "(Default "+flag.DefValue+")")
+	})
+	os.Exit(0)
+}
 
-	helpFlag    bool
-	headerStr   string
-	versionFlag bool
-)
-
-func init() {
+func main() {
+	helpFlag := false
+	headerStr := ""
+	versionFlag := false
+	f := loader.LoadCfg{}
 	flag.BoolVar(&versionFlag, "v", false, "Print version details")
 	flag.BoolVar(&f.AllowRedirects, "redir", false, "Allow Redirects")
 	flag.BoolVar(&helpFlag, "help", false, "Print help")
@@ -42,19 +48,8 @@ func init() {
 	flag.StringVar(&f.CaCert, "ca", "", "CA file to verify peer against (SSL/TLS)")
 	flag.BoolVar(&f.HTTP2, "http", true, "Use HTTP/2")
 	flag.BoolVar(&f.InsecureTLS, "insecure", true, "toggle verify TLS certificates")
-}
+	flag.Parse() // Scan the arguments list
 
-// printDefaults a nicer format for the defaults
-func printDefaults() {
-	fmt.Println("Usage: go-werk <options> <url>")
-	fmt.Println("Options:")
-	flag.VisitAll(func(flag *flag.Flag) {
-		fmt.Println("\t-"+flag.Name, "\t", flag.Usage, "(Default "+flag.DefValue+")")
-	})
-	os.Exit(0)
-}
-
-func main() {
 	// raising the limits. Some performance gains were achieved with the + goroutines (not a lot).
 	runtime.GOMAXPROCS(runtime.NumCPU() + f.Goroutines)
 
@@ -62,8 +57,6 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 
 	signal.Notify(sigChan, os.Interrupt)
-
-	flag.Parse() // Scan the arguments list
 	f.Header = make(map[string]string)
 	if headerStr != "" {
 		headerPairs := strings.Split(headerStr, ";")
