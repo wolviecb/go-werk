@@ -50,6 +50,11 @@ type RequesterStats struct {
 	NumErrs        int
 }
 
+// ResponseStats is used to collect HTTP response duration and size
+type ResponseStats struct {
+	Duration time.Duration
+	Size     int64
+}
 
 // NewRequest builds a new HTTP request
 func NewRequest(method, url, host string, headers map[string]string, body io.Reader) (*http.Request, error) {
