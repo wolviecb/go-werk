@@ -50,6 +50,26 @@ type RequesterStats struct {
 	NumErrs        int
 }
 
+
+// NewRequest builds a new HTTP request
+func NewRequest(method, url, host string, headers map[string]string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		fmt.Println("An error occurred doing request", err)
+		return req, err
+	}
+
+	for hk, hv := range headers {
+		req.Header.Add(hk, hv)
+	}
+
+	req.Header.Add("User-Agent", userAgent)
+	if host != "" {
+		req.Host = host
+	}
+	return req, nil
+}
+
 // NewLoadCfg loads configuration into LoadCfg
 func NewLoadCfg(duration int, //seconds
 	goroutines int,
