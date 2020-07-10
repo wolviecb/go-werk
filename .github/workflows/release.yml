@@ -8,7 +8,7 @@ on:
 jobs:
 
   build:
-    name: Build
+    name: Release
     runs-on: ubuntu-latest
     steps:
 
@@ -31,12 +31,11 @@ jobs:
     - name: Build
       env:
         CGO_ENABLED: 0
-      run: |
-        go build -ldflags="-s -w"
+      run: go build -ldflags="-s -w"
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2
       with:
-        name: go-werk-${{ steps.branch_name.outputs.SOURCE_TAG }}
+        name: go-werk-${{ steps.get_version.outputs.SOURCE_TAG }}
         # A file, directory or wildcard pattern that describes what to upload
         path: /home/runner/work/go-werk/go-werk/go-werk
