@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -19,26 +18,48 @@ const (
 	userAgent = "go-werk"
 )
 
+// ABool is a atomic boolean
+type ABool struct {
+	flag int32
+}
+
+// Set atomically write a bool
+func (b *ABool) Set(v bool) {
+	var i int32 = 0
+	if v {
+		i = 1
+	}
+	atomic.StoreInt32(&(b.flag), int32(i))
+}
+
+// Get atomically reads a bool
+func (b *ABool) Get() bool {
+	if atomic.LoadInt32(&(b.flag)) != 0 {
+		return true
+	}
+	return false
+}
+
 // LoadCfg holds configuration data
 type LoadCfg struct {
-	Duration           int //seconds
-	Goroutines         int
-	TestURL            string
-	ReqBody            string
-	Method             string
-	Host               string
-	Header             map[string]string
-	StatsAggregator    chan *RequesterStats
-	Timeoutms          int
-	AllowRedirects     bool
-	DisableCompression bool
-	DisableKeepAlive   bool
-	Interrupted        int32
-	ClientCert         string
-	ClientKey          string
-	CaCert             string
-	HTTP2              bool
-	InsecureTLS        bool
+	Duration           int                  // Duration of the test in seconds
+	Goroutines         int                  // Number of parallel routines to run
+	TestURL            string               // URL to test
+	ReqBody            string               // HTTP Request body of the test
+	Method             string               // HTTP Method of the test
+	Host               string               // Overrides TestURL host
+	Header             map[string]string    // HTTP Headers for the test
+	StatsAggregator    chan *RequesterStats // Test Results aggregator
+	Timeoutms          int                  // HTTP timeout in milliseconds
+	AllowRedirects     bool                 // Allow HTTP redirects
+	DisableCompression bool                 // Disable HTTP compressions
+	DisableKeepAlive   bool                 // Disable HTTP keep-alive
+	StopAll            ABool                // Stops all routines
+	ClientCert         string               // Client certificate for authentication
+	ClientKey          string               // Client key for authentication
+	CaCert             string               // CA Certificate
+	HTTP2              bool                 // Use HTTP2
+	InsecureTLS        bool                 // Toggles remote certificate validation
 }
 
 // RequesterStats used for collecting aggregate statistics
@@ -51,12 +72,37 @@ type RequesterStats struct {
 	NumErrs        int
 }
 
+// ResponseStats is used to collect HTTP response duration and size
+type ResponseStats struct {
+	Duration time.Duration
+	Size     int64
+}
+
+// NewRequest builds a new HTTP request
+func NewRequest(method, url, host string, headers map[string]string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		fmt.Println("An error occurred doing request", err)
+		return req, err
+	}
+
+	for hk, hv := range headers {
+		req.Header.Add(hk, hv)
+	}
+
+	req.Header.Add("User-Agent", userAgent)
+	if host != "" {
+		req.Host = host
+	}
+	return req, nil
+}
+
 // NewLoadCfg loads configuration into LoadCfg
 func NewLoadCfg(duration int, //seconds
 	goroutines int,
-	TestURL string,
-	ReqBody string,
-	Method string,
+	testURL string,
+	reqBody string,
+	method string,
 	host string,
 	header map[string]string,
 	statsAggregator chan *RequesterStats,
@@ -68,68 +114,38 @@ func NewLoadCfg(duration int, //seconds
 	clientKey string,
 	caCert string,
 	http2 bool,
-	insecureTLS bool) (rt *LoadCfg) {
-	rt = &LoadCfg{duration, goroutines, TestURL, ReqBody, Method, host, header, statsAggregator, timeoutms,
-		allowRedirects, disableCompression, disableKeepAlive, 0, clientCert, clientKey, caCert, http2, insecureTLS}
-	return
-}
-
-func escapeURLStr(in string) string {
-	qm := strings.Index(in, "?")
-	if qm != -1 {
-		qry := in[qm+1:]
-		qrys := strings.Split(qry, "&")
-		var query string
-		var qEscaped string
-		var first bool = true
-		for _, q := range qrys {
-			qSplit := strings.Split(q, "=")
-			if len(qSplit) == 2 {
-				qEscaped = qSplit[0] + "=" + url.QueryEscape(qSplit[1])
-			} else {
-				qEscaped = qSplit[0]
-			}
-			if first {
-				first = false
-			} else {
-				query += "&"
-			}
-			query += qEscaped
-
-		}
-		return in[:qm] + "?" + query
+	insecureTLS bool) *LoadCfg {
+	return &LoadCfg{
+		Duration:           duration,
+		Goroutines:         goroutines,
+		TestURL:            testURL,
+		ReqBody:            reqBody,
+		Method:             method,
+		Host:               host,
+		Header:             header,
+		StatsAggregator:    statsAggregator,
+		Timeoutms:          timeoutms,
+		AllowRedirects:     allowRedirects,
+		DisableCompression: disableCompression,
+		DisableKeepAlive:   disableKeepAlive,
+		StopAll:            *new(ABool),
+		ClientCert:         clientCert,
+		ClientKey:          clientKey,
+		CaCert:             caCert,
+		HTTP2:              http2,
+		InsecureTLS:        insecureTLS,
 	}
-	return in
-
 }
 
 // DoRequest single request implementation. Returns the size of the response and its duration
-// On error - returns -1 on both
-func (cfg *LoadCfg) DoRequest(httpClient *http.Client) (respSize int, duration time.Duration) {
-	respSize = -1
-	duration = -1
-
-	loadURL := escapeURLStr(cfg.TestURL)
-
-	var buf io.Reader
-	if len(cfg.ReqBody) > 0 {
-		buf = bytes.NewBufferString(cfg.ReqBody)
-	}
-
-	req, err := http.NewRequest(cfg.Method, loadURL, buf)
+func (cfg *LoadCfg) DoRequest(httpClient *http.Client) (ResponseStats, error) {
+	respStats := ResponseStats{}
+	req, err := NewRequest(cfg.Method, cfg.TestURL, cfg.Host, cfg.Header, bytes.NewBufferString(cfg.ReqBody))
 	if err != nil {
 		fmt.Println("An error occurred doing request", err)
-		return
+		return respStats, err
 	}
 
-	for hk, hv := range cfg.Header {
-		req.Header.Add(hk, hv)
-	}
-
-	req.Header.Add("User-Agent", userAgent)
-	if cfg.Host != "" {
-		req.Host = cfg.Host
-	}
 	start := time.Now()
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -139,13 +155,13 @@ func (cfg *LoadCfg) DoRequest(httpClient *http.Client) (respSize int, duration t
 		rr, ok := err.(*url.Error)
 		if !ok {
 			fmt.Println("An error occurred doing request", err, rr)
-			return
+			return respStats, err
 		}
 		fmt.Println("An error occurred doing request", err)
 	}
 	if resp == nil {
 		fmt.Println("empty response")
-		return
+		return respStats, err
 	}
 	defer func() {
 		if resp != nil && resp.Body != nil {
@@ -157,16 +173,16 @@ func (cfg *LoadCfg) DoRequest(httpClient *http.Client) (respSize int, duration t
 		fmt.Println("An error occurred reading body", err)
 	}
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
-		duration = time.Since(start)
-		respSize = len(body) + int(util.EstimateHTTPHeadersSize(resp.Header))
+		respStats.Duration = time.Since(start)
+		respStats.Size = int64(len(body)) + util.EstimateHTTPHeadersSize(resp.Header)
 	} else if resp.StatusCode == http.StatusMovedPermanently || resp.StatusCode == http.StatusTemporaryRedirect {
-		duration = time.Since(start)
-		respSize = int(resp.ContentLength) + int(util.EstimateHTTPHeadersSize(resp.Header))
+		respStats.Duration = time.Since(start)
+		respStats.Size = resp.ContentLength + util.EstimateHTTPHeadersSize(resp.Header)
 	} else {
 		fmt.Println("received status code", resp.StatusCode, "from", resp.Header, "content", string(body), req)
 	}
 
-	return
+	return respStats, err
 }
 
 // RunSingleLoadSession Requester a go function for repeatedly making requests and aggregating statistics as long as required
@@ -175,27 +191,23 @@ func (cfg *LoadCfg) RunSingleLoadSession() {
 	stats := &RequesterStats{MinRequestTime: time.Minute}
 	start := time.Now()
 
-	httpClient, err := client(cfg.DisableCompression, cfg.DisableKeepAlive, cfg.Timeoutms, cfg.AllowRedirects, cfg.ClientCert, cfg.ClientKey, cfg.CaCert, cfg.HTTP2, cfg.InsecureTLS)
+	httpClient, err := client(*cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for time.Since(start).Seconds() <= float64(cfg.Duration) && atomic.LoadInt32(&cfg.Interrupted) == 0 {
-		respSize, reqDur := cfg.DoRequest(httpClient)
-		if respSize > 0 {
-			stats.TotRespSize += int64(respSize)
-			stats.TotDuration += reqDur
-			stats.MaxRequestTime = util.MaxDuration(reqDur, stats.MaxRequestTime)
-			stats.MinRequestTime = util.MinDuration(reqDur, stats.MinRequestTime)
-			stats.NumRequests++
-		} else {
+	for time.Since(start).Seconds() <= float64(cfg.Duration) && !cfg.StopAll.Get() {
+		respStats, err := cfg.DoRequest(httpClient)
+		if err != nil {
 			stats.NumErrs++
+			continue
 		}
+		stats.TotRespSize += respStats.Size
+		stats.TotDuration += respStats.Duration
+		stats.MaxRequestTime = util.MaxDuration(respStats.Duration, stats.MaxRequestTime)
+		stats.MinRequestTime = util.MinDuration(respStats.Duration, stats.MinRequestTime)
+		stats.NumRequests++
+
 	}
 	cfg.StatsAggregator <- stats
-}
-
-// Stop kill all goroutines
-func (cfg *LoadCfg) Stop() {
-	atomic.StoreInt32(&cfg.Interrupted, 1)
 }
