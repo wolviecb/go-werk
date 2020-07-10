@@ -18,6 +18,10 @@ jobs:
         go-version: ^1.14
       id: go
 
+    - name: Get tag
+      id: get_version
+      run: echo ::set-output name=SOURCE_TAG::${GITHUB_REF#refs/tags/}
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
@@ -25,13 +29,14 @@ jobs:
       run: go get -v -t -d ./...
 
     - name: Build
+      env:
+        CGO_ENABLED: 0
       run: |
-        go build -v .
-        pwd
+        go build -ldflags="-s -w"
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2
       with:
-        name: go-werk-${{ github.ref }}
+        name: go-werk-${{ steps.branch_name.outputs.SOURCE_TAG }}
         # A file, directory or wildcard pattern that describes what to upload
         path: /home/runner/work/go-werk/go-werk/go-werk
