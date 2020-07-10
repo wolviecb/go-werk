@@ -25,7 +25,9 @@ jobs:
       run: go get -v -t -d ./...
 
     - name: Build
-      run: go build -v .
+      run: |
+        go build -v .
+        pwd
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2
