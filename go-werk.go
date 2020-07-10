@@ -14,7 +14,7 @@ import (
 	"github.com/wolviecb/go-werk/util"
 )
 
-const appVersion = "0.1"
+const appVersion = "0.2"
 
 // printDefaults a nicer format for the defaults
 func printDefaults() {
